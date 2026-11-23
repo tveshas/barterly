@@ -1,6 +1,5 @@
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
-import redis from "../config/redis.js";
 
 const ACCESS_EXPIRES_IN =
   process.env.JWT_ACCESS_EXPIRE || process.env.JWT_ACCESS_EXPIRES_IN || "15m";
@@ -83,11 +82,25 @@ export const generateTokens = (user, options = {}) => {
   };
 };
 
+// In-memory token blacklist for logout. Entries expire with the token itself.
+// (Single-instance deployment; a restart just means older tokens expire naturally.)
+const blacklist = new Map(); // jti -> expiry timestamp (ms)
+
 export const blacklistToken = async (jti, expiresInSeconds) => {
-  await redis.setex(`blacklist:${jti}`, expiresInSeconds, "1");
+  blacklist.set(jti, Date.now() + expiresInSeconds * 1000);
 };
 
 export const isTokenBlacklisted = async (jti) => {
-  const result = await redis.get(`blacklist:${jti}`);
-  return result !== null;
+  const expiresAt = blacklist.get(jti);
+  if (!expiresAt) return false;
+  if (expiresAt <= Date.now()) {
+    blacklist.delete(jti);
+    return false;
+  }
+  return true;
 };
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [jti, exp] of blacklist) if (exp <= now) blacklist.delete(jti);
+}, 10 * 60 * 1000).unref();

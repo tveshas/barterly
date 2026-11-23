@@ -3,63 +3,26 @@ import * as authController from "../controllers/auth.controller.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import {
-  registerSchema,
-  loginSchema,
-  verifyEmailSchema,
-  forgotPasswordSchema,
-  resetPasswordSchema,
+  googleLoginSchema,
+  devLoginSchema,
 } from "../validations/auth.validation.js";
-import { otpLimiter } from "../config/rateLimiter.js";
 
 const router = express.Router();
 
-/**
- * Public routes
- */
+// Sign in / sign up with Google (the only way to authenticate)
+router.post("/google", validate(googleLoginSchema), authController.googleLogin);
 
-// Register new user
-router.post("/register", validate(registerSchema), authController.register);
-
-// Login user
-router.post("/login", validate(loginSchema), authController.login);
-
-// Verify email with OTP
-router.post(
-  "/verify-email",
-  otpLimiter,
-  validate(verifyEmailSchema),
-  authController.verifyEmail,
-);
-
-// Forgot password
-router.post(
-  "/forgot-password",
-  validate(forgotPasswordSchema),
-  authController.forgotPassword,
-);
-
-// Reset password with OTP
-router.post(
-  "/reset-password",
-  otpLimiter,
-  validate(resetPasswordSchema),
-  authController.resetPassword,
-);
+// Test login for seeded users. Local dev: enabled by DEV_LOGIN=true.
+// Production: additionally requires DEV_LOGIN_KEY (and only reaches seeded test users).
+if (
+  process.env.DEV_LOGIN === "true" &&
+  (process.env.NODE_ENV !== "production" || process.env.DEV_LOGIN_KEY)
+) {
+  router.post("/dev-login", validate(devLoginSchema), authController.devLogin);
+}
 
 // Refresh access token
 router.post("/refresh-token", authController.refreshToken);
-
-/**
- * Protected routes (require authentication)
- */
-
-// Resend verification email
-router.post(
-  "/resend-verification",
-  otpLimiter,
-  authenticate,
-  authController.resendVerification,
-);
 
 // Get current user
 router.get("/me", authenticate, authController.getCurrentUser);

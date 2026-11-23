@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import skillService from "../../services/skillService";
 import barterService from "../../services/barterService";
+import FairTradeCalculator from "../FairTradeCalculator";
 
 const SendBarterModal = ({ isOpen, onClose, requestedSkill }) => {
   const [mySkills, setMySkills] = useState([]);
@@ -9,12 +10,14 @@ const SendBarterModal = ({ isOpen, onClose, requestedSkill }) => {
   const [loading, setLoading] = useState(false);
   const [fetchingSkills, setFetchingSkills] = useState(true);
   const [error, setError] = useState(null);
+  const [equalization, setEqualization] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
       fetchMySkills();
       setMessage(""); // Reset message when modal opens
       setSelectedSkillId(""); // Reset selection
+      setEqualization(null);
       setError(null);
     }
   }, [isOpen]);
@@ -58,6 +61,10 @@ const SendBarterModal = ({ isOpen, onClose, requestedSkill }) => {
         offeredSkillId: selectedSkillId,
         requestedSkillId: requestedSkill._id,
       };
+
+      if (equalization) {
+        barterData.equalization = equalization;
+      }
 
       // Only include message if it's not empty
       if (message.trim()) {
@@ -168,6 +175,15 @@ const SendBarterModal = ({ isOpen, onClose, requestedSkill }) => {
                 : `Select one of your ${mySkills.length} skill${mySkills.length !== 1 ? "s" : ""} to swap.`}
             </p>
           </div>
+
+          {/* AI fair-trade moderator */}
+          {selectedSkillId && (
+            <FairTradeCalculator
+              offeredSkillId={selectedSkillId}
+              requestedSkillId={requestedSkill._id}
+              onChange={setEqualization}
+            />
+          )}
 
           {/* Message (Optional) */}
           <div>

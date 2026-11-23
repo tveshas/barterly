@@ -18,6 +18,7 @@ const Profile = () => {
     name: "",
     bio: "",
     location: "",
+    hourlyRate: "",
   });
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
@@ -75,6 +76,7 @@ const timezone = `${timezoneName} (${timezoneOffset})`;
         name: fetchedUser.name || "",
         bio: fetchedUser.bio || "",
         location: fetchedUser.location || "",
+        hourlyRate: fetchedUser.hourlyRate ?? "",
       });
       setAvatarPreview(fetchedUser.avatar?.url || fetchedUser.avatar || null);
     } catch (err) {
@@ -92,6 +94,7 @@ const timezone = `${timezoneName} (${timezoneOffset})`;
       name: user?.name || "",
       bio: user?.bio || "",
       location: user?.location || "",
+      hourlyRate: user?.hourlyRate ?? "",
     });
     setAvatarPreview(user?.avatar?.url || user?.avatar || null);
     setAvatarFile(null);
@@ -126,7 +129,10 @@ const timezone = `${timezoneName} (${timezoneOffset})`;
       }
 
       // Update profile
-      const updatedUserRes = await userService.updateProfile(editForm);
+      const updatedUserRes = await userService.updateProfile({
+        ...editForm,
+        hourlyRate: editForm.hourlyRate === "" ? 0 : Number(editForm.hourlyRate),
+      });
 
       // Update local state and local storage
       const updatedUser = updatedUserRes.data?.data?.user || updatedUserRes.data?.user || updatedUserRes.data;
@@ -472,6 +478,25 @@ const timezone = `${timezoneName} (${timezoneOffset})`;
                   onChange={handleInputChange}
                   className="w-full bg-white border-2 border-black px-3 py-2 text-sm font-bold focus:outline-none focus:ring-0 focus:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-shadow"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase mb-1">
+                  Hourly rate in ₹ (used by the AI fair-trade check)
+                </label>
+                <div className="flex gap-2">
+                  <span className="flex items-center px-4 border-2 border-black bg-neutral-100 font-black">₹</span>
+                  <input
+                    type="number"
+                    name="hourlyRate"
+                    min="0"
+                    step="1"
+                    placeholder="e.g. 25"
+                    value={editForm.hourlyRate}
+                    onChange={handleInputChange}
+                    className="flex-1 bg-white border-2 border-black px-3 py-2 text-sm font-bold focus:outline-none focus:ring-0 focus:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-shadow"
+                  />
+                </div>
               </div>
 
               {/* Note: Managing skillsWanted and portfolioLinks can be added later as complex array editors */}

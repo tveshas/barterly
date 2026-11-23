@@ -22,6 +22,18 @@ export const createBarterRequestSchema = z.object({
       .string()
       .max(500, "Message cannot exceed 500 characters")
       .optional(),
+    equalization: z
+      .object({
+        senderHours: z.coerce.number().min(0).max(1000),
+        receiverHours: z.coerce.number().min(0).max(1000),
+        senderRate: z.coerce.number().min(0).max(10000),
+        receiverRate: z.coerce.number().min(0).max(10000),
+        currency: z.string().trim().max(3).optional(),
+        settlement: z.enum(["none", "cash", "extra_hours", "fewer_hours"]),
+        cashAmount: z.coerce.number().min(-1000000).max(1000000).optional(),
+        note: z.string().trim().max(500).optional(),
+      })
+      .optional(),
   }),
 });
 

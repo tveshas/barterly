@@ -104,6 +104,35 @@ const Messages = () => {
     }
   }, [activeConversation]);
 
+  // Polling fallback: when the realtime socket isn't connected (e.g. serverless hosting),
+  // refresh the open conversation every few seconds and the conversation list less often.
+  useEffect(() => {
+    const socketLive = () => !!socketService.getSocket()?.connected;
+    const msgTimer = setInterval(async () => {
+      if (!activeConversation || socketLive() || document.hidden) return;
+      try {
+        const res = await chatService.getMessages(activeConversation._id);
+        const fresh = res.data?.data || res.data || [];
+        setMessages((prev) => (fresh.length !== prev.length ? fresh : prev));
+      } catch {
+        /* ignore transient errors */
+      }
+    }, 4000);
+    const listTimer = setInterval(async () => {
+      if (socketLive() || document.hidden) return;
+      try {
+        const res = await chatService.getConversations();
+        setConversations(res.data?.data || res.data || []);
+      } catch {
+        /* ignore transient errors */
+      }
+    }, 10000);
+    return () => {
+      clearInterval(msgTimer);
+      clearInterval(listTimer);
+    };
+  }, [activeConversation]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -121,6 +150,11 @@ const Messages = () => {
       // Send payload to backend HTTP. The server will fire the socket event 'new_message' to everyone in the room!
       await chatService.sendMessage(activeConversation._id, newMessage);
       setNewMessage("");
+      // Without a live socket our own message won't be pushed back, so refetch.
+      if (!socketService.getSocket()?.connected) {
+        const res = await chatService.getMessages(activeConversation._id);
+        setMessages(res.data?.data || res.data || []);
+      }
     } catch (err) {
       console.error("Failed to send message", err);
     }

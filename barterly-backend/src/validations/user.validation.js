@@ -30,6 +30,13 @@ export const updateProfileSchema = z.object({
       .trim()
       .optional(),
 
+    hourlyRate: z.coerce
+      .number()
+      .min(0, "Hourly rate cannot be negative")
+      .max(10000, "Hourly rate is too high")
+      .optional(),
+
+
     skillsWanted: z
       .array(z.string().trim())
       .max(10, "Maximum 10 skills wanted")

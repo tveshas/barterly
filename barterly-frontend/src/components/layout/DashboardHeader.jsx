@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import walletService from "../../services/walletService";
+import { inr } from "../../utils/currency";
 import authService from "../../services/authService";
 import notificationService from "../../services/notificationService";
 import skillService from "../../services/skillService";
@@ -7,6 +9,18 @@ import userService from "../../services/userService";
 import { getInitials } from "../../utils/getInitials";
 const DashboardHeader = ({ onMenuClick }) => {
   const [notifications, setNotifications] = useState([]);
+  const [walletBalance, setWalletBalance] = useState(null);
+
+  useEffect(() => {
+    const loadBalance = () =>
+      walletService
+        .getWallet()
+        .then((res) => setWalletBalance(res.data.balance))
+        .catch(() => {});
+    loadBalance();
+    window.addEventListener("wallet-updated", loadBalance);
+    return () => window.removeEventListener("wallet-updated", loadBalance);
+  }, []);
   const [user, setUser] = useState(() => authService.getUser() || {});
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -160,6 +174,19 @@ const DashboardHeader = ({ onMenuClick }) => {
             </div>
           )}
         </div>
+
+        {/* Wallet */}
+        {walletBalance !== null && (
+          <button
+            type="button"
+            onClick={() => navigate("/wallet")}
+            title="Wallet (test money)"
+            className="hidden sm:flex h-10 items-center gap-2 px-3 border-2 border-black bg-primary font-black text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
+          >
+            <span className="material-symbols-outlined text-base">account_balance_wallet</span>
+            {inr(walletBalance)}
+          </button>
+        )}
 
         {/* Notifications */}
         <div className="relative group">

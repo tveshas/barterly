@@ -8,8 +8,6 @@ import app from "./src/app.js";
 import connectDB from "./src/config/db.js";
 import { initializeSocket } from "./src/config/socket.js";
 
-import { connect } from "./src/config/rabbitmq.js"
-import { startEmailWorker } from "./src/workers/emailWorker.js";
 import { registeredUsers } from "./src/config/metrics.js";
 import User from './src/models/User.model.js';
 
@@ -29,9 +27,6 @@ const startServer = async () => {
 
   const userCount = await User.countDocuments();
   registeredUsers.set(userCount);
-
-  await connect();       // ← connect to RabbitMQ
-  await startEmailWorker();      // ← start consuming the email queue
 
   const server = httpServer.listen(PORT, () => {
     console.log(

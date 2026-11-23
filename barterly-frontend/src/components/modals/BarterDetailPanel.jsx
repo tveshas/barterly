@@ -1,3 +1,4 @@
+import { inr } from "../../utils/currency";
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import barterService from "../../services/barterService";
@@ -334,6 +335,38 @@ const BarterDetailPanel = ({
                   </p>
                   <p className="text-sm font-medium text-gray-800 leading-relaxed">
                     {barter.message}
+                  </p>
+                </div>
+              )}
+
+              {/* Fair-trade proposal */}
+              {barter.equalization && barter.equalization.settlement && (
+                <div className="bg-white border-2 border-black p-5 shadow-hard flex flex-col gap-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500">
+                    ⚖️ Fair-trade proposal
+                  </p>
+                  <p className="text-sm font-medium text-gray-800">
+                    {barter.sender?.name} teaches ~{barter.equalization.senderHours} hrs
+                    ({inr(barter.equalization.senderRate)}/hr) ·{" "}
+                    {barter.receiver?.name} teaches ~{barter.equalization.receiverHours} hrs
+                    ({inr(barter.equalization.receiverRate)}/hr)
+                  </p>
+                  <p className="text-sm font-bold">
+                    {{
+                      none: "Straight swap, no top-up.",
+                      cash: barter.status === "pending" ? "Balanced with a cash top-up (moves between wallets on accept)." : "Balanced with a cash top-up (settled via wallets).",
+                      extra_hours: "Balanced by adjusting teaching hours (extra hours added).",
+                      fewer_hours: "Balanced by shortening the larger side (hours above are the agreed amounts).",
+                    }[barter.equalization.settlement]}
+                  </p>
+                  {barter.equalization.settlement === "cash" && barter.equalization.cashAmount !== 0 && (
+                    <p className="text-sm font-black">
+                      Cash top-up: {inr(Math.abs(barter.equalization.cashAmount), { decimals: true })} paid by{" "}
+                      {barter.equalization.cashAmount > 0 ? barter.sender?.name : barter.receiver?.name}
+                    </p>
+                  )}
+                  <p className="text-[11px] text-gray-500">
+                    Any payment is arranged directly between you two.
                   </p>
                 </div>
               )}

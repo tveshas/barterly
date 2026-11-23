@@ -49,6 +49,7 @@ export const updateUserProfile = async (userId, updateData) => {
     "name",
     "bio",
     "location",
+    "hourlyRate",
     "skillsWanted",
     "portfolioLinks",
   ];

@@ -20,9 +20,32 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, "Password is required"],
+      // Optional: users sign in with Google and have no password
       minlength: [8, "Password must be at least 8 characters"],
       select: false,
+    },
+    // Seeded demo/test accounts: the only accounts the opt-in test login can use in production
+    isTestUser: {
+      type: Boolean,
+      default: false,
+    },
+    googleId: {
+      type: String,
+      index: true,
+      sparse: true,
+    },
+    // Hourly rate in INR used by the AI fair-trade equalizer
+    hourlyRate: {
+      type: Number,
+      min: [0, "Hourly rate cannot be negative"],
+      max: [10000, "Hourly rate is too high"],
+      default: 0,
+    },
+    // Fake wallet money (INR) for testing cash top-ups; there is no payment gateway
+    walletBalance: {
+      type: Number,
+      default: 5000,
+      min: [0, "Wallet balance cannot be negative"],
     },
     avatar: {
       url: {

@@ -35,6 +35,8 @@ import { mongoSanitizeMiddleware } from "./middlewares/mongoSanitize.middleware.
 
 //Import Rate Limiters
 import { authLimiter, apiLimiter } from "./config/rateLimiter.js";
+import equalizerRoutes from "./routes/equalizer.routes.js";
+import walletRoutes from "./routes/wallet.routes.js";
 
 import { client } from "./config/metrics.js";
 import metricsMiddleware from "./middlewares/metrics.middleware.js";
@@ -130,6 +132,8 @@ app.use("/api/users", apiLimiter, userRoutes);
 app.use("/api/skills", apiLimiter, skillRoutes);
 app.use("/api/categories", apiLimiter, categoryRoutes);
 app.use("/api/barters", apiLimiter, barterRoutes);
+app.use("/api/equalizer", apiLimiter, equalizerRoutes);
+app.use("/api/wallet", apiLimiter, walletRoutes);
 app.use("/api/reviews", apiLimiter, reviewRoutes);
 app.use("/api/bookmarks", apiLimiter, bookmarkRoutes);
 app.use("/api/reports", apiLimiter, reportRoutes);

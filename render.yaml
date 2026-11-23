@@ -1,0 +1,39 @@
+# Render Blueprint: backend API. (Frontend goes on Vercel, see DEPLOY.md)
+services:
+  - type: web
+    name: barterly-api
+    runtime: node
+    rootDir: barterly-backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: MONGODB_URI
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      # Optional: lets you sign in as seeded test users on the deployed site (see DEPLOY.md)
+      - key: DEV_LOGIN
+        value: "true"
+      - key: DEV_LOGIN_KEY
+        sync: false

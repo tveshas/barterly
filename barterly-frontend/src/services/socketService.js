@@ -8,6 +8,8 @@ const socketService = {
    * @param {string} token - User's authorization token
    */
   connect: (token) => {
+    // Realtime sockets can't run on serverless hosting; the chat page polls instead.
+    if (import.meta.env.VITE_DISABLE_SOCKETS === "true") return;
     if (!socket) {
       socket = io(import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:3000", {
         auth: {

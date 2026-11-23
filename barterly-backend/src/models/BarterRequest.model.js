@@ -52,6 +52,21 @@ const barterRequestSchema = new mongoose.Schema(
         type: Date,
       },
     },
+    // Snapshot of the AI fair-trade proposal chosen by the sender (optional)
+    equalization: {
+      senderHours: Number,
+      receiverHours: Number,
+      senderRate: Number,
+      receiverRate: Number,
+      currency: String,
+      settlement: {
+        type: String,
+        enum: ["none", "cash", "extra_hours", "fewer_hours"],
+      },
+      cashAmount: Number, // amount sender pays receiver (negative = receiver pays sender)
+      note: String,
+      cashSettledAt: Date, // set once the wallet transfer for a cash top-up has happened
+    },
     conversation: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Conversation",

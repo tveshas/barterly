@@ -44,6 +44,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { path: "/my-skills", icon: "lightbulb", label: "MY SKILLS" },
     { path: "/requests", icon: "swap_calls", label: "REQUESTS" },
     { path: "/messages", icon: "chat", label: "MESSAGES" },
+    { path: "/wallet", icon: "account_balance_wallet", label: "WALLET" },
     { path: "/bookmarks", icon: "bookmark", label: "BOOKMARKS" },
     { path: "/profile", icon: "person", label: "PROFILE" },
   ];

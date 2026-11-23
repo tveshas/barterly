@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import FAQ from "./pages/FAQ";
 import Header from "./components/layout/Header";
@@ -6,16 +6,14 @@ import Footer from "./components/layout/Footer";
 import LandingPage from "./pages/LandingPage";
 import BrowseSkills from "./pages/BrowseSkills";
 import SkillDetail from "./pages/SkillDetail";
-import Register from "./pages/auth/Register";
 import Login from "./pages/auth/Login";
-import VerifyEmail from "./pages/auth/VerifyEmail";
-import ForgotPassword from "./pages/auth/ForgotPassword";
 import UserDashboard from "./pages/user/Dashboard";
 import MySkills from "./pages/user/MySkills";
 import PostSkill from "./pages/user/PostSkill";
 import BarterRequests from "./pages/user/BarterRequests";
 import Bookmarks from "./pages/user/Bookmarks";
 import Messages from "./pages/user/Messages";
+import Wallet from "./pages/user/Wallet";
 import Profile from "./pages/user/Profile";
 import AdminDashboard from "./pages/admin/Dashboard";
 import SkillApproval from "./pages/admin/SkillApproval";
@@ -85,6 +83,7 @@ function App() {
     "/requests",
     "/bookmarks",
     "/messages",
+    "/wallet",
     "/profile",
     "/admin",
   ];
@@ -103,10 +102,11 @@ function App() {
           <Route path="/browse" element={<BrowseSkills />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/skills/:id" element={<SkillDetail />} />
-          <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
+          {/* Old email/password routes now all go through Google sign-in */}
+          {["/register", "/verify-email", "/forgot-password"].map((path) => (
+            <Route key={path} path={path} element={<Navigate to="/login" replace />} />
+          ))}
 
           {/* User Dashboard Routes */}
           <Route
@@ -154,6 +154,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/wallet"
+            element={
+              <ProtectedRoute>
+                <Wallet />
               </ProtectedRoute>
             }
           />

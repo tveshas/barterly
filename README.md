@@ -37,7 +37,7 @@ Barterly enables skill exchange through an intuitive marketplace where users can
 barterly/
 ├── barterly-backend/          # Express.js REST API
 │   ├── src/
-│   │   ├── config/            # Database, Redis, RabbitMQ, Metrics configs
+│   │   ├── config/            # Database, Socket, Metrics configs
 │   │   ├── controllers/       # Request handlers for all routes
 │   │   ├── models/            # MongoDB Mongoose schemas
 │   │   ├── routes/            # API route definitions
@@ -70,16 +70,13 @@ barterly/
 - **Runtime**: Node.js v18+
 - **Framework**: Express.js v5
 - **Database**: MongoDB with Mongoose
-- **Authentication**: JWT (Access & Refresh tokens)
+- **Authentication**: Google Sign-In (Google Identity Services) + JWT (Access & Refresh tokens)
+- **AI**: Groq API (fair-trade equalizer moderator)
 - **Real-time Communication**: Socket.io
-- **Caching**: Redis (Upstash)
-- **Message Queue**: RabbitMQ (CloudAMQP)
 - **File Upload**: Cloudinary
-- **Email**: Nodemailer
 - **Monitoring**: Prometheus + Grafana
-- **Security**: Helmet, CORS, express-rate-limit, bcrypt, NoSQL injection protection
+- **Security**: Helmet, CORS, express-rate-limit, NoSQL injection protection
 - **Validation**: Zod
-- **Password Hashing**: bcrypt
 
 ### Frontend
 
@@ -100,10 +97,9 @@ barterly/
 - **Node.js**: v18 or higher
 - **npm** or **yarn**: Latest version
 - **MongoDB**: Atlas account or local instance
-- **Redis**: Cloud instance (e.g., Upstash)
-- **RabbitMQ**: Cloud instance (e.g., CloudAMQP)
+- **Google OAuth Client ID**: for sign-in (see DEPLOY.md)
+- **Groq API key**: optional, powers the AI fair-trade equalizer
 - **Cloudinary**: Account for image uploads (optional)
-- **Gmail**: For sending emails (with App Password)
 
 ### Installation
 
@@ -137,11 +133,15 @@ barterly/
    JWT_ACCESS_EXPIRE=15m
    JWT_REFRESH_EXPIRE=7d
 
-   # Email (Gmail with App Password)
-   SMTP_HOST=smtp.gmail.com
-   SMTP_PORT=587
-   SMTP_USER=your_email@gmail.com
-   SMTP_PASS=your_app_password
+   # Google sign-in (Web client ID) and admin emails
+   GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
+   ADMIN_EMAILS=you@gmail.com
+
+   # Groq (AI fair-trade equalizer, optional)
+   GROQ_API_KEY=your_groq_key
+
+   # Local dev only: sign in as seeded users without Google
+   DEV_LOGIN=true
 
    # Cloudinary
    CLOUDINARY_CLOUD_NAME=your_cloud_name
@@ -153,13 +153,6 @@ barterly/
 
    # Reverse proxy
    TRUST_PROXY=1
-
-   # Redis
-   REDIS_URL=rediss://default:password@host:port
-
-   # RabbitMQ
-   CLOUDAMQP_URL=amqps://username:password@host/vhost
-   RABBITMQ_URL=amqp://localhost
    ```
 
 3. **Frontend Setup**
@@ -215,9 +208,9 @@ npm run seed:categories
 
 #### Authentication & Profile
 
-- ✅ User registration with email verification (OTP-based)
-- ✅ Login/Logout with JWT tokens
-- ✅ Password reset flow
+- ✅ One-click Google sign-in / sign-up (no passwords, no email codes)
+- ✅ Hourly rate on your profile
+- ✅ AI fair-trade equalizer: when two skills need different teaching time, Groq estimates hours per skill and the app proposes a cash top-up, extra hours, or a shorter session to even the swap
 - ✅ User profile management
 - ✅ Avatar upload via Cloudinary
 - ✅ Bio and location information
@@ -307,12 +300,8 @@ npm run seed:categories
 
 #### Authentication
 
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `POST /api/auth/verify-email` - Verify email with OTP
-- `POST /api/auth/resend-otp` - Resend OTP
-- `POST /api/auth/forgot-password` - Password reset request
-- `POST /api/auth/reset-password` - Reset password
+- `POST /api/auth/google` - Sign in / sign up with a Google ID token
+- `POST /api/equalizer/calculate` - AI fair-trade proposal for two skills
 - `POST /api/auth/refresh-token` - Refresh access token
 - `POST /api/auth/logout` - Logout user
 
@@ -366,8 +355,7 @@ npm run seed:categories
 - **Helmet**: HTTP security headers
 - **NoSQL Injection Protection**: Custom sanitization middleware
 - **HPP**: HTTP Parameter Pollution protection
-- **Password Hashing**: bcrypt with salt rounds
-- **Email Verification**: OTP-based verification
+- **Sign-in**: Google ID tokens verified server-side
 - **Role-Based Access Control**: Admin and user roles
 
 ---
@@ -406,18 +394,6 @@ Message Broadcast
 Connected Clients
 ```
 
-### Background Jobs
-
-```
-Email Queue (RabbitMQ)
-    ↓
-Email Worker Process
-    ↓
-Nodemailer → SMTP Server
-    ↓
-User Inbox
-```
-
 ---
 
 ## 🧪 Testing
@@ -429,7 +405,7 @@ cd barterly-backend
 npm test
 ```
 
-The backend uses Node.js built-in test runner for isolated tests that do not require MongoDB, Redis, RabbitMQ, SMTP, or Cloudinary. Current coverage includes authentication validation schemas.
+The backend uses Node.js built-in test runner for isolated tests that do not require MongoDB or Cloudinary. Current coverage includes authentication validation schemas.
 
 ### Frontend
 
@@ -449,10 +425,12 @@ npm run build
 
 ## 🚢 Deployment
 
+> Step-by-step guide (MongoDB Atlas + Render + Vercel, plus Google/Groq setup): see [DEPLOY.md](DEPLOY.md).
+
 ### Backend Deployment (Node.js)
 
 - Recommended: Render, Railway, Azure App Service, or Heroku
-- Requires: MongoDB, Redis, RabbitMQ cloud instances
+- Requires: MongoDB (Atlas). See DEPLOY.md
 - Environment variables setup required
 
 ### Frontend Deployment (React)
@@ -481,12 +459,11 @@ npm run build
 | `MONGODB_URI`           | MongoDB connection  | mongodb+srv://...         |
 | `JWT_ACCESS_SECRET`     | JWT secret key      | your_secret_key           |
 | `JWT_ACCESS_EXPIRE`     | Token expiry        | 15m                       |
-| `SMTP_USER`             | Email address       | your@gmail.com            |
+| `GOOGLE_CLIENT_ID`      | Google OAuth client | xxxx.apps.googleusercontent.com |
 | `FRONTEND_URL`          | Frontend URL        | http://localhost:5173     |
 | `TRUST_PROXY`           | Trusted proxy hops  | 1                         |
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary account  | your_cloud_name           |
-| `REDIS_URL`             | Redis connection    | rediss://...              |
-| `CLOUDAMQP_URL`         | RabbitMQ connection | amqps://...               |
+| `GROQ_API_KEY`          | Groq API key        | gsk_...                   |
 
 ### Frontend (.env)
 
@@ -556,7 +533,7 @@ Recommended workflow:
 
 | Directory      | Purpose                                                  |
 | -------------- | -------------------------------------------------------- |
-| `config/`      | Database, Redis, RabbitMQ, and other configuration files |
+| `config/`      | Database, rate limiting, sockets, and other configuration files |
 | `controllers/` | HTTP request handlers                                    |
 | `models/`      | MongoDB schema definitions                               |
 | `routes/`      | API route definitions                                    |
@@ -608,23 +585,11 @@ Recommended workflow:
 - Check MongoDB Atlas whitelist includes your IP
 - Ensure username/password are URL encoded
 
-**Email Not Sending**
-
-- Enable Gmail 2FA
-- Generate App Password (not regular password)
-- Check `SMTP_USER` and `SMTP_PASS` are correct
-
 **Socket.io Connection Failed**
 
 - Verify frontend and backend are running
 - Check CORS configuration in `src/app.js`
 - Ensure `FRONTEND_URL` matches frontend domain
-
-**Redis Connection Error**
-
-- Verify `REDIS_URL` format
-- Check Redis cloud service is running
-- Test connection string separately
 
 ---
 

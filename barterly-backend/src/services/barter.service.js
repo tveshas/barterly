@@ -2,6 +2,7 @@ import BarterRequest from "../models/BarterRequest.model.js";
 import Skill from "../models/Skill.model.js";
 import User from "../models/User.model.js";
 import { AppError } from "../utils/apiResponse.utils.js";
+import { transfer, getBalance, inr } from "./wallet.service.js";
 
 /**
  * Create a new barter request
@@ -14,7 +15,8 @@ export const createBarterRequest = async (barterData, senderId) => {
   console.log("🔧 barterData:", JSON.stringify(barterData, null, 2));
   console.log("🔧 senderId:", senderId.toString());
 
-  const { receiverId, offeredSkillId, requestedSkillId, message } = barterData;
+  const { receiverId, offeredSkillId, requestedSkillId, message, equalization } =
+    barterData;
 
   // Validate sender is not the same as receiver
   if (senderId.toString() === receiverId.toString()) {
@@ -48,6 +50,17 @@ export const createBarterRequest = async (barterData, senderId) => {
     );
   }
 
+  // If the sender agreed to pay a cash top-up, make sure their wallet can cover it
+  if (equalization?.settlement === "cash" && equalization.cashAmount > 0) {
+    const balance = await getBalance(senderId);
+    if (balance < equalization.cashAmount) {
+      throw new AppError(
+        `Your wallet has ${inr(balance)} but this cash top-up is ${inr(equalization.cashAmount)}. Add test money on the Wallet page first.`,
+        400,
+      );
+    }
+  }
+
   // Check for duplicate pending requests
   const existingRequest = await BarterRequest.findOne({
     sender: senderId,
@@ -71,6 +84,7 @@ export const createBarterRequest = async (barterData, senderId) => {
     offeredSkill: offeredSkillId,
     requestedSkill: requestedSkillId,
     message,
+    ...(equalization ? { equalization: { ...equalization, currency: "INR" } } : {}),
   });
 
   // Populate fields
@@ -209,6 +223,27 @@ export const acceptBarter = async (barterId, userId) => {
   // Can only accept pending requests
   if (barter.status !== "pending") {
     throw new AppError(`Cannot accept a ${barter.status} request`, 400);
+  }
+
+  // Settle an agreed cash top-up from the payer's wallet to the payee's
+  const eq = barter.equalization;
+  if (eq?.settlement === "cash" && eq.cashAmount && !eq.cashSettledAt) {
+    const [sender, receiver] = await Promise.all([
+      User.findById(barter.sender).select("name"),
+      User.findById(barter.receiver).select("name"),
+    ]);
+    const senderPays = eq.cashAmount > 0;
+    const payer = senderPays ? sender : receiver;
+    const payee = senderPays ? receiver : sender;
+    await transfer({
+      fromId: payer._id,
+      toId: payee._id,
+      amount: Math.abs(eq.cashAmount),
+      barterId: barter._id,
+      fromName: payer.name,
+      toName: payee.name,
+    });
+    barter.equalization.cashSettledAt = new Date();
   }
 
   // Update status

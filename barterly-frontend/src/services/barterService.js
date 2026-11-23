@@ -16,6 +16,14 @@ const barterService = {
   },
 
   /**
+   * AI fair-trade proposal between two skills (Groq-moderated)
+   */
+  calculateEqualization: async (payload) => {
+    const response = await api.post("/equalizer/calculate", payload);
+    return response.data;
+  },
+
+  /**
    * Get current user's barter requests with filters
    * @param {Object} params - Query parameters
    * @param {string} params.status - Filter by status (pending/accepted/rejected/cancelled/completed/all)

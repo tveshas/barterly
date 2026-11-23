@@ -30,11 +30,8 @@ api.interceptors.response.use(
     const originalRequest = error.config;
     const requestUrl = originalRequest?.url || "";
     const isAuthEndpoint = [
-      "/auth/login",
-      "/auth/register",
-      "/auth/forgot-password",
-      "/auth/reset-password",
-      "/auth/verify-email",
+      "/auth/google",
+      "/auth/dev-login",
       "/auth/refresh-token",
     ].some((path) => requestUrl.includes(path));
 

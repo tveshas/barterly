@@ -1,92 +1,62 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
 import authService from "../../services/authService";
+
+const GOOGLE_ENABLED = !!import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const DEV_LOGIN = import.meta.env.VITE_DEV_LOGIN === "true";
+const DEV_USERS = [
+  ["alice@test.com", "Alice (test)"],
+  ["bob@test.com", "Bob (test)"],
+  ["priya@demo.com", "Priya Sharma (React mentor)"],
+  ["marco@demo.com", "Marco Rossi (Italian cooking)"],
+  ["aisha@demo.com", "Aisha Khan (design)"],
+  ["liam@demo.com", "Liam O'Connor (guitar)"],
+  ["sofia@demo.com", "Sofia Martinez (Spanish)"],
+  ["daniel@demo.com", "Daniel Kim (Python)"],
+  ["emma@demo.com", "Emma Wilson (fitness)"],
+  ["rahul@demo.com", "Rahul Verma (video editing)"],
+];
 
 const Login = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    rememberMe: false,
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [devEmail, setDevEmail] = useState(DEV_USERS[0][0]);
+  const [devKey, setDevKey] = useState("");
 
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-    setError(""); // Clear error when user types
+  const goHome = (response) => {
+    navigate(response.data.user.role === "admin" ? "/admin/dashboard" : "/dashboard");
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleGoogle = async (credentialResponse) => {
     setError("");
-
-    // Validation
-    if (!formData.email || !formData.password) {
-      setError("Please fill in all fields");
-      return;
-    }
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError("Please enter a valid email address");
-      return;
-    }
-
-    setIsLoading(true);
-
+    setLoading(true);
     try {
-      // Call the API
-      const response = await authService.login({
-        email: formData.email,
-        password: formData.password,
-        rememberMe: formData.rememberMe,
-      });
-
-
-      // Check if email is verified
-      if (!response.data.user.isVerified) {
-        // Navigate to verification page if email not verified
-        navigate("/verify-email", { state: { email: formData.email } });
-      } else {
-        // Navigate to appropriate dashboard based on role
-        if (response.data.user.role === "admin") {
-          navigate("/admin/dashboard");
-        } else {
-          navigate("/dashboard");
-        }
-      }
+      goHome(await authService.googleLogin(credentialResponse.credential));
     } catch (err) {
-      console.error("Login error:", err);
-
-      // Extract accurate error message from backend response
-      let errorMessage = "Login failed. Please try again.";
-
-      if (err?.message) {
-        errorMessage = err.message;
-      } else if (err?.errors && Array.isArray(err.errors)) {
-        // Handle validation errors
-        errorMessage = err.errors.map(e => e.message).join(", ");
-      } else if (typeof err === 'string') {
-        errorMessage = err;
-      }
-
-      setError(errorMessage);
+      setError(err?.message || "Google sign-in failed. Please try again.");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
+    }
+  };
+
+  const handleDev = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      goHome(await authService.devLogin(devEmail, devKey));
+    } catch (err) {
+      setError(err?.message || "Dev login failed");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="bg-background-light h-screen w-full overflow-hidden flex flex-col lg:flex-row">
+    <div className="bg-background-light min-h-screen lg:h-screen w-full lg:overflow-hidden flex flex-col lg:flex-row">
       {/* Left Panel: Brand & Features */}
-      <div className="w-full lg:w-1/2 bg-background-dark h-full flex flex-col justify-between p-8 md:p-12 lg:p-16 relative overflow-hidden border-r-4 border-border-dark">
+      <div className="w-full lg:w-1/2 bg-background-dark lg:h-full flex flex-col justify-between p-8 md:p-12 lg:p-16 relative overflow-hidden border-r-4 border-border-dark">
         {/* Abstract Background Pattern */}
         <div
           className="absolute inset-0 opacity-10 pointer-events-none"
@@ -107,12 +77,12 @@ const Login = () => {
         <div className="z-10 flex flex-col gap-8 my-auto">
           <div className="space-y-2">
             <h2 className="text-white text-6xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tight">
-              WELCOME
+              JOIN THE
               <br />
-              BACK.
+              SWAP.
             </h2>
             <p className="text-neutral-400 text-lg md:text-xl font-medium max-w-md">
-              Continue trading your talents in the marketplace.
+              Sign in with Google. New here? An account is created for you automatically.
             </p>
           </div>
 
@@ -151,151 +121,84 @@ const Login = () => {
         {/* Footer Link */}
         <div className="z-10 pt-8">
           <Link
-            to="/register"
+            to="/"
             className="text-white hover:text-primary transition-colors text-lg font-bold group flex items-center gap-2 w-fit"
           >
-            New to Barterly? Register
-            <span className="group-hover:translate-x-1 transition-transform">
-              →
-            </span>
+            ← Back to home
           </Link>
         </div>
       </div>
 
-      {/* Right Panel: Login Form */}
-      <div className="w-full lg:w-1/2 bg-background-light h-full flex flex-col justify-center items-center p-8 md:p-12 lg:p-16 overflow-y-auto">
+      {/* Right Panel: Sign in */}
+      <div className="w-full lg:w-1/2 bg-background-light lg:h-full flex flex-col justify-center items-center p-8 md:p-12 lg:p-16 overflow-y-auto">
         <div className="w-full max-w-md flex flex-col gap-8">
-          {/* Form Header */}
           <div>
             <h2 className="text-black text-6xl font-black uppercase tracking-tighter mb-2">
-              LOGIN
+              Sign in
             </h2>
             <p className="text-neutral-600 font-medium">
-              Enter your details to access your account.
+              Continue with your Google account. No passwords, no email codes.
             </p>
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="bg-red-100 border-2 border-red-500 text-red-700 px-4 py-3 font-bold">
               {error}
             </div>
           )}
 
-          {/* Form */}
-          <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
-            {/* Email Input */}
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="email"
-                className="text-black font-bold uppercase tracking-wider text-sm"
-              >
-                Email Address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="you@example.com"
-                className="w-full bg-white border-2 border-black p-4 text-black placeholder-neutral-400 font-bold focus:ring-0 focus:outline-none focus:shadow-hard focus:border-black focus:translate-x-[-2px] focus:translate-y-[-2px] transition-all"
+          {GOOGLE_ENABLED ? (
+            <div className={loading ? "opacity-50 pointer-events-none" : ""}>
+              <GoogleLogin
+                onSuccess={handleGoogle}
+                onError={() => setError("Google sign-in was cancelled or failed.")}
+                theme="filled_black"
+                shape="rectangular"
+                size="large"
+                text="continue_with"
+                width="360"
               />
             </div>
-
-            {/* Password Input */}
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between items-center">
-                <label
-                  htmlFor="password"
-                  className="text-black font-bold uppercase tracking-wider text-sm"
-                >
-                  Password
-                </label>
-                <Link
-                  to="/forgot-password"
-                  className="text-neutral-600 hover:text-black text-sm font-bold underline decoration-2 decoration-primary underline-offset-4"
-                >
-                  Forgot Password?
-                </Link>
-              </div>
-              <div className="relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="••••••••"
-                  className="w-full bg-white border-2 border-black p-4 pr-12 text-black placeholder-neutral-400 font-bold focus:ring-0 focus:outline-none focus:shadow-hard focus:border-black focus:translate-x-[-2px] focus:translate-y-[-2px] transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-600 hover:text-black"
-                >
-                  <span className="material-symbols-outlined">
-                    {showPassword ? "visibility_off" : "visibility"}
-                  </span>
-                </button>
-              </div>
+          ) : (
+            <div className="bg-yellow-100 border-2 border-black px-4 py-3 text-sm font-bold">
+              Google sign-in isn&apos;t configured yet. Set VITE_GOOGLE_CLIENT_ID in
+              barterly-frontend/.env (see DEPLOY.md).
             </div>
+          )}
 
-            {/* Remember Me Checkbox */}
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="rememberMe"
-                name="rememberMe"
-                checked={formData.rememberMe}
-                onChange={handleInputChange}
-                className="w-5 h-5 border-2 border-black text-primary focus:ring-0 focus:ring-offset-0"
-              />
-              <label
-                htmlFor="rememberMe"
-                className="text-black font-bold text-sm"
+          {DEV_LOGIN && (
+            <div className="border-2 border-dashed border-black p-4 flex flex-col gap-3 bg-white">
+              <p className="text-xs font-black uppercase tracking-widest text-neutral-500">
+                Test login: sign in as a seeded user
+              </p>
+              <select
+                value={devEmail}
+                onChange={(e) => setDevEmail(e.target.value)}
+                className="w-full bg-white border-2 border-black p-3 font-bold"
               >
-                Remember me
-              </label>
+                {DEV_USERS.map(([email, label]) => (
+                  <option key={email} value={email}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="password"
+                value={devKey}
+                onChange={(e) => setDevKey(e.target.value)}
+                placeholder="Test key (not needed locally)"
+                className="w-full bg-white border-2 border-black p-3 font-bold"
+              />
+              <button
+                type="button"
+                onClick={handleDev}
+                disabled={loading}
+                className="w-full bg-primary border-2 border-black py-3 font-black uppercase shadow-hard disabled:opacity-50"
+              >
+                {loading ? "Signing in..." : "Dev sign in →"}
+              </button>
             </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-primary text-black font-black uppercase text-lg py-4 border-2 border-black shadow-hard hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-hard-sm active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all flex justify-center items-center gap-2 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? "Logging in..." : "Login"}
-              {!isLoading && (
-                <span className="material-symbols-outlined font-bold">
-                  arrow_forward
-                </span>
-              )}
-            </button>
-          </form>
-
-          {/* Mobile Footer Link */}
-          <div className="mt-4 text-center lg:hidden">
-            <Link
-              to="/register"
-              className="text-black font-bold underline decoration-2 decoration-primary underline-offset-4"
-            >
-              Don't have an account? Register here
-            </Link>
-          </div>
-
-          {/* Desktop Footer Link */}
-          <div className="mt-4 text-center hidden lg:block">
-            <Link
-              to="/register"
-              className="text-black font-bold hover:bg-primary/50 px-2 py-1 transition-colors"
-            >
-              Don't have an account?{" "}
-              <span className="underline decoration-2 decoration-primary underline-offset-4">
-                Register here
-              </span>
-            </Link>
-          </div>
+          )}
         </div>
       </div>
     </div>

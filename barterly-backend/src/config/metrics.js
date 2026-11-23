@@ -21,15 +21,9 @@ const registeredUsers = new client.Gauge({
   help: "Total number of registered users",
 });
 
-const emailQueueSize = new client.Gauge({
-  name: "barterly_email_queue_size",
-  help: "Number of pending emails in RabbitMQ queue",
-});
-
 export {
   client,
   httpRequestCounter,
   httpRequestDuration,
   registeredUsers,
-  emailQueueSize,
 };

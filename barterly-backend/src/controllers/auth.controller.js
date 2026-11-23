@@ -46,133 +46,54 @@ const buildRefreshCookieOptions = (maxAge) => {
   return options;
 };
 
-export const register = async (req, res, next) => {
+const startSession = (res, result, remember) => {
+  const refreshExpiresIn = remember
+    ? REMEMBER_ME_REFRESH_EXPIRES_IN
+    : REFRESH_EXPIRES_IN;
+  const refreshMaxAge = parseDurationToMs(
+    refreshExpiresIn,
+    DEFAULT_REFRESH_MAX_AGE_MS,
+  );
+  res.cookie(
+    "refreshToken",
+    result.refreshToken,
+    buildRefreshCookieOptions(remember ? refreshMaxAge : undefined),
+  );
+  return { user: result.user, accessToken: result.accessToken };
+};
+
+const refreshExpiryFor = (remember) =>
+  remember ? REMEMBER_ME_REFRESH_EXPIRES_IN : REFRESH_EXPIRES_IN;
+
+export const googleLogin = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
-
-    const result = await authService.registerUser({ name, email, password });
-
-    res.cookie(
-      "refreshToken",
-      result.refreshToken,
-      buildRefreshCookieOptions(
-        parseDurationToMs(REFRESH_EXPIRES_IN, DEFAULT_REFRESH_MAX_AGE_MS),
-      ),
-    );
-
+    const { credential, rememberMe } = req.body;
+    const remember = rememberMe !== false; // stay signed in by default
+    const result = await authService.googleLogin(credential, {
+      refreshExpiresIn: refreshExpiryFor(remember),
+    });
     return successResponse(
       res,
-      201,
-      "Registration successful. Please check your email to verify your account.",
-      {
-        user: result.user,
-        accessToken: result.accessToken,
-      },
+      200,
+      "Login successful",
+      startSession(res, result, remember),
     );
   } catch (error) {
     next(error);
   }
 };
 
-export const login = async (req, res, next) => {
+export const devLogin = async (req, res, next) => {
   try {
-    const { email, password, rememberMe } = req.body;
-
-    const debugAuth = process.env.DEBUG_AUTH === "true";
-    const remember = !!rememberMe;
-
-    const refreshExpiresIn = remember
-      ? REMEMBER_ME_REFRESH_EXPIRES_IN
-      : REFRESH_EXPIRES_IN;
-    const refreshMaxAge = parseDurationToMs(
-      refreshExpiresIn,
-      DEFAULT_REFRESH_MAX_AGE_MS,
+    const result = await authService.devLogin(req.body.email, req.body.key, {
+      refreshExpiresIn: refreshExpiryFor(true),
+    });
+    return successResponse(
+      res,
+      200,
+      "Dev login successful",
+      startSession(res, result, true),
     );
-
-    if (debugAuth) {
-      const maskedEmail =
-        typeof email === "string"
-          ? email.replace(/(^.).*(@.*$)/, "$1***$2")
-          : "<missing>";
-      console.log("[auth.login] incoming", {
-        email: maskedEmail,
-        rememberMe: rememberMe,
-        rememberMeType: typeof rememberMe,
-        refreshExpiresIn,
-        refreshMaxAge,
-        nodeEnv: process.env.NODE_ENV,
-      });
-    }
-
-    const result = await authService.loginUser(email, password, {
-      refreshExpiresIn,
-    });
-
-    const cookieOptions = buildRefreshCookieOptions(remember ? refreshMaxAge : undefined);
-    res.cookie("refreshToken", result.refreshToken, cookieOptions);
-
-    if (debugAuth) {
-      const setCookie =
-        res.getHeader("Set-Cookie") || res.getHeader("set-cookie");
-      console.log("[auth.login] set-cookie", {
-        cookieOptions,
-        remember,
-        hasSetCookieHeader: !!setCookie,
-      });
-    }
-
-    return successResponse(res, 200, "Login successful", {
-      user: result.user,
-      accessToken: result.accessToken,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const verifyEmail = async (req, res, next) => {
-  try {
-    const { otp, email } = req.body;
-
-    const result = await authService.verifyEmail(otp, email);
-
-    return successResponse(res, 200, "Email verified successfully", result);
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const resendVerification = async (req, res, next) => {
-  try {
-    const userId = req.user._id;
-
-    const result = await authService.resendVerificationEmail(userId);
-
-    return successResponse(res, 200, result.message);
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const forgotPassword = async (req, res, next) => {
-  try {
-    const { email } = req.body;
-
-    const result = await authService.forgotPassword(email);
-
-    return successResponse(res, 200, result.message);
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const resetPassword = async (req, res, next) => {
-  try {
-    const { email, otp, password } = req.body;
-
-    const result = await authService.resetPassword(email, otp, password);
-
-    return successResponse(res, 200, result.message);
   } catch (error) {
     next(error);
   }

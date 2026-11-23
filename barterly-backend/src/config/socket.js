@@ -14,7 +14,7 @@ export const initializeSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
       origin: [
-        process.env.FRONTEND_URL || "http://localhost:5173",
+        (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, ""),
         "http://localhost:3000",
       ],
       credentials: true,
@@ -96,6 +96,12 @@ export const getIO = () => {
   }
   return io;
 };
+
+/**
+ * Socket.io instance if one is running, otherwise null (e.g. on Vercel serverless,
+ * where there is no long-lived server). Callers should skip realtime emits on null.
+ */
+export const tryGetIO = () => io || null;
 
 /**
  * Returns the currently active socket id for a given user id

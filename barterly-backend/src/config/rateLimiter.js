@@ -1,61 +1,41 @@
 import rateLimit from "express-rate-limit";
-import RedisStore from "rate-limit-redis";
-import redis from "./redis.js";
 import { rateLimitKeyGenerator } from "../utils/ip.utils.js";
 
-const makeStore = (prefix) =>
-  new RedisStore({
-    sendCommand: (command, ...args) => redis.call(command, ...args),
-    prefix,
+// In-memory stores (express-rate-limit default). Fine for a single server
+// instance, which is how this app is deployed; no Redis needed.
+// Limits are skipped outside production so local development isn't throttled.
+const limiter = ({ windowMs, max, message }) =>
+  rateLimit({
+    windowMs,
+    max,
+    keyGenerator: rateLimitKeyGenerator,
+    skip: () => process.env.NODE_ENV !== "production",
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, message },
   });
-export const authLimiter = rateLimit({
+
+export const authLimiter = limiter({
   windowMs: 15 * 60 * 1000,
-  max: 20,
-  store: makeStore("rl:auth"),
-  keyGenerator: rateLimitKeyGenerator,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message: "Too many attempts. Please try again after 15 minutes",
-  },
+  max: 30,
+  message: "Too many attempts. Please try again after 15 minutes",
 });
 
-export const otpLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  max: 5,
-  store: makeStore("rl:otp"),
-  keyGenerator: rateLimitKeyGenerator,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message: "Too many OTP attempts. Please request a new OTP after 10 minutes",
-  },
-});
-
-export const apiLimiter = rateLimit({
+export const apiLimiter = limiter({
   windowMs: 15 * 60 * 1000,
-  max: 200,
-  store: makeStore("rl:api"),
-  keyGenerator: rateLimitKeyGenerator,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message: "Too many attempts. Please slow down",
-  },
+  max: 300,
+  message: "Too many attempts. Please slow down",
 });
 
-export const uploadLimiter = rateLimit({
+export const uploadLimiter = limiter({
   windowMs: 60 * 60 * 1000,
   max: 50,
-  store: makeStore("rl:upload"),
-  keyGenerator: rateLimitKeyGenerator,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message: "Upload limit reached. Try again in an hour.",
-  },
+  message: "Upload limit reached. Try again in an hour.",
+});
+
+// Each call hits the Groq API, so keep this tighter
+export const equalizerLimiter = limiter({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  message: "Fair-trade calculator limit reached. Try again later.",
 });

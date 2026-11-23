@@ -1,6 +1,6 @@
 import Conversation from "../models/Conversation.model.js";
 import Message from "../models/Message.model.js";
-import { getIO } from "../config/socket.js";
+import { tryGetIO } from "../config/socket.js";
 import { AppError } from "../utils/apiResponse.utils.js";
 
 /**
@@ -108,8 +108,8 @@ export const sendMessage = async (conversationId, senderId, content, type = "tex
     await conversation.save();
 
     // Fire socket event for all clients in this conversation's room
-    const io = getIO();
-    io.to(conversationId).emit("new_message", populatedMessage);
+    // (no-op when there is no socket server, e.g. serverless; clients poll instead)
+    tryGetIO()?.to(conversationId).emit("new_message", populatedMessage);
 
     return populatedMessage;
   } catch (error) {
